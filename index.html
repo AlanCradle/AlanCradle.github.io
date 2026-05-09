@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tourism Dynamics Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --tourist-color: #5dade2;
+            --env-color: #58d68d;
+            --cap-color: #f5b041;
+            --glass-white: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; padding: 10px; color: #ffffff;
+            background: linear-gradient(-45deg, #0b2239, #1b4f72, #0e6251, #145a32);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bg-image {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1920&auto=format&fit=crop') no-repeat center center;
+            background-size: cover;
+            z-index: -1;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+        
+        .panel { 
+            background: var(--glass-white); 
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            padding: 20px; 
+            border-radius: 20px; 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); 
+            margin-bottom: 20px; 
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+        .screen { display: none; animation: fadeIn 0.6s ease forwards; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Zoom/Scale Logic for Simulation Screen --- */
+        #simulation-screen.active {
+            display: block;
+            transform: scale(0.6);
+            transform-origin: top center;
+            /* Compensate for scale height reduction to avoid huge empty footer space */
+            margin-bottom: -15%; 
+        }
+
+        h1, h2 { color: #ffffff; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+        
+        .layout-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 992px) {
+            .setup-grid { grid-template-columns: 1fr 1fr 1fr; }
+            .simulation-grid { grid-template-columns: 320px 1fr; }
+        }
+
+        .input-group { margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .input-group label { font-size: 0.9rem; flex-grow: 1; font-weight: bold; }
+        .input-group input { 
+            width: 70px; padding: 8px; 
+            background: rgba(0, 0, 0, 0.3); 
+            color: #fff; border: 1px solid var(--glass-border); 
+            border-radius: 10px; outline: none;
+        }
+        
+        .slider-box { margin-bottom: 15px; }
+        .slider-box label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; }
+        .slider-box input[type="range"] { width: 100%; accent-color: var(--tourist-color); }
+        .slider-val { float: right; color: #aed6f1; font-family: monospace; font-weight: bold; }
+
+        .metrics-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .metric-card { text-align: center; padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); }
+        .m-tourist { background: rgba(41, 128, 185, 0.6); }
+        .m-env { background: rgba(39, 174, 96, 0.6); }
+        .m-cap { background: rgba(211, 84, 0, 0.6); }
+        .metric-card p { margin: 5px 0 0; font-size: 1.8rem; font-weight: bold; }
+
+        #system-status { text-align: center; padding: 12px; border-radius: 12px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        button { 
+            background: rgba(255, 255, 255, 0.2); 
+            color: white; border: 1px solid var(--glass-border); 
+            padding: 12px; border-radius: 12px; 
+            cursor: pointer; font-weight: bold; flex-grow: 1;
+            transition: 0.3s;
+        }
+        button:hover { background: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
+        .btn-start { background: var(--env-color); font-size: 1.2rem; padding: 20px; }
+        .btn-success { background: rgba(46, 204, 113, 0.5); }
+        .btn-edit { font-size: 0.8rem; padding: 5px 10px; background: rgba(255,255,255,0.1); margin-top: 10px; }
+
+        .home-content { text-align: center; padding: 40px 20px; }
+        .info-window { min-height: 200px; text-align: left; font-size: 1.1rem; line-height: 1.6; position: relative; white-space: pre-wrap; }
+        #info-editor {
+            width: 100%; height: 250px; background: rgba(0,0,0,0.3); 
+            color: white; border: 1px solid var(--glass-border); 
+            border-radius: 12px; padding: 15px; font-family: inherit; font-size: 1.1rem;
+            display: none; box-sizing: border-box;
+        }
+
+        .chart-container { background: rgba(0, 0, 0, 0.15); border-radius: 12px; padding: 10px; }
+        canvas { min-height: 500px; max-height: 600px; }
+
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="bg-image"></div>
+
+<div class="container">
+    <div id="home-screen" class="screen active">
+        <div class="home-content">
+            <h1 style="font-size: 2.5rem; margin-bottom: 40px; border: none; font-weight: 800;">Environmental and Social economic Consequences of Tourism Development - Simulator</h1>
+            <button class="btn-start" onclick="showScreen('setup-screen')">START SIMULATION</button>
+            
+            <div class="panel" style="margin-top: 50px;">
+                <div id="info-display" class="info-window"></div>
+                <textarea id="info-editor"></textarea>
+                <!--Editing functions-->
+                <div class="btn-group" style="justify-content: center; margin-top: 15px;">
+                    <button class="btn-edit" id="toggle-edit" onclick="toggleInfoEdit()">Edit</button>
+                    <button class="btn-edit" id="save-info" onclick="saveInfoContent()" style="display:none; background: var(--env-color);">Save Changes</button>
+                    <button class="btn-edit" onclick="document.getElementById('info-upload').click()">Import</button>
+                    <input type="file" id="info-upload" accept=".txt" onchange="importInfoFile(event)">
+                </div>
+                
+
+            </div>
+        </div>
+    </div>
+
+    <div id="setup-screen" class="screen panel">
+        <h1>Model Initialization</h1>
+        <div class="btn-group">
+            <button onclick="document.getElementById('config-upload').click()">📂 Import Config</button>
+            <input type="file" id="config-upload" accept=".json" onchange="importConfig(event)">
+            <button onclick="exportConfig()">💾 Save Config</button>
+        </div>
+
+        <div class="layout-grid setup-grid">
+            <div>
+                <h2>Initial States</h2>
+                <div class="input-group"><label>Tourists (T₀)</label><input type="number" id="init-t" step="0.01" value="0.1"></div>
+                <div class="input-group"><label>Environment (E₀)</label><input type="number" id="init-e" step="0.01" value="1.0"></div>
+                <div class="input-group"><label>Capital (C₀)</label><input type="number" id="init-c" step="0.01" value="0.1"></div>
+                <h2>Time Flow</h2>
+                <div class="input-group"><label>Speed (ms/step)</label><input type="number" id="sim-speed" value="50" min="10" max="500"></div>
+            </div>
+            <div>
+                <h2>Attractivity</h2>
+                <div class="input-group"><label>Env Max Attr (μ_E)</label><input type="number" id="p-mu_e" step="0.01" value="0.5"></div>
+                <div class="input-group"><label>Env Saturation (φ_E)</label><input type="number" id="p-phi_e" step="0.01" value="0.5"></div>
+                <div class="input-group"><label>Cap Max Attr (μ_C)</label><input type="number" id="p-mu_c" step="0.01" value="0.2"></div>
+                <div class="input-group"><label>Cap Saturation (φ_C)</label><input type="number" id="p-phi_c" step="0.01" value="0.5"></div>
+                <div class="input-group"><label>Congestion (α)</label><input type="number" id="p-alpha" step="0.01" value="0.05"></div>
+            </div>
+            <div>
+                <h2>Environment</h2>
+                <div class="input-group"><label>Recovery Rate (r)</label><input type="number" id="p-r" step="0.01" value="0.4"></div>
+                <div class="input-group"><label>Capacity (K)</label><input type="number" id="p-k" step="0.01" value="1.0"></div>
+                <div class="input-group"><label>Dmg/Tourist (β)</label><input type="number" id="p-beta" step="0.01" value="0.2"></div>
+                <div class="input-group"><label>Dmg/Capital (γ)</label><input type="number" id="p-gamma" step="0.01" value="0.1"></div>
+                <div class="input-group" style="justify-content: flex-start; gap:10px; margin-top:20px;">
+                    <input type="checkbox" id="enable-debug" style="width:20px; height:20px;"><label>Enable Debugger</label>
+                </div>
+            </div>
+        </div>
+        <button class="btn-success" onclick="startSim()" style="margin-top: 30px; width: 100%;">Launch 🚀</button>
+    </div>
+
+    <div id="simulation-screen" class="screen">
+        <div class="layout-grid simulation-grid">
+            <div class="panel">
+                <h2>Live Modifiers</h2>
+                <div class="btn-group">
+                    <button id="pause-btn" onclick="togglePause()">⏸ Pause</button>
+                    <button onclick="location.reload()">⏹ Stop</button>
+                </div>
+                <div class="btn-group">
+                    <button onclick="exportSnapshot()">📸 Save Snap</button>
+                    <button onclick="document.getElementById('snap-upload').click()">📂 Load Snap</button>
+                    <input type="file" id="snap-upload" accept=".json" onchange="importSnapshot(event)">
+                </div>
+                <div id="runtime-sliders" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            <div>
+                <div class="metrics-container">
+                    <div class="metric-card m-tourist"><h3>Tourists</h3><p id="val-t">0.00</p></div>
+                    <div class="metric-card m-env"><h3>Eco</h3><p id="val-e">0.00</p></div>
+                    <div class="metric-card m-cap"><h3>Capital</h3><p id="val-c">0.00</p></div>
+                </div>
+                <div id="system-status">Initializing...</div>
+                <div class="panel chart-container"><canvas id="mainChart"></canvas></div>
+                <div id="debug-panel" class="panel" style="display:none;"><h3>Debugger</h3><div class="debug-window" id="debug-log"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let T, E, C, params = {}, time = 0, dt = 0.1, simInterval, chart, isPaused = false;
+    const paramNames = { 'mu_e': 'Env Max Attr (μ_E)', 'phi_e': 'Env Satur. (φ_E)', 'mu_c': 'Cap Max Attr (μ_C)', 'phi_c': 'Cap Satur. (φ_C)', 'alpha': 'Congestion (α)', 'lambda': 'Exit Rate (λ)', 'r': 'Recovery (r)', 'k': 'Capacity (K)', 'beta': 'Dmg/Tourist (β)', 'gamma': 'Dmg/Capital (γ)', 'epsilon': 'Reinvest (ε)', 'delta': 'Depreciation (δ)' };
+    const paramKeys = Object.keys(paramNames);
+
+    window.onload = () => {
+        const savedInfo = localStorage.getItem('tourismSimInfo');
+        if (savedInfo) document.getElementById('info-display').innerHTML = savedInfo;
+    };
+
+    function toggleInfoEdit() {
+        const display = document.getElementById('info-display');
+        const editor = document.getElementById('info-editor');
+        const saveBtn = document.getElementById('save-info');
+        const toggleBtn = document.getElementById('toggle-edit');
+        if (editor.style.display === 'none' || editor.style.display === '') {
+            editor.value = display.innerHTML.replace(/<br>/g, '\n');
+            display.style.display = 'none';
+            editor.style.display = 'block';
+            saveBtn.style.display = 'inline-block';
+            toggleBtn.innerText = 'Cancel';
+        } else {
+            display.style.display = 'block';
+            editor.style.display = 'none';
+            saveBtn.style.display = 'none';
+            toggleBtn.innerText = 'Edit Info Content';
+        }
+    }
+
+    function saveInfoContent() {
+        const display = document.getElementById('info-display');
+        const editor = document.getElementById('info-editor');
+        const content = editor.value.replace(/\n/g, '<br>');
+        display.innerHTML = content;
+        localStorage.setItem('tourismSimInfo', content);
+        toggleInfoEdit();
+    }
+
+    function importInfoFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target.result.replace(/\n/g, '<br>');
+            document.getElementById('info-display').innerHTML = content;
+            localStorage.setItem('tourismSimInfo', content);
+        };
+        reader.readAsText(file);
+        event.target.value = "";
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function startSim() {
+        T = parseFloat(document.getElementById('init-t').value);
+        E = parseFloat(document.getElementById('init-e').value);
+        C = parseFloat(document.getElementById('init-c').value);
+        let speed = parseInt(document.getElementById('sim-speed').value);
+        paramKeys.forEach(k => { const el = document.getElementById(`p-${k}`); params[k] = el ? parseFloat(el.value) : 0.15; });
+        if (document.getElementById('enable-debug').checked) document.getElementById('debug-panel').style.display = 'block';
+        const sliders = document.getElementById('runtime-sliders');
+        sliders.innerHTML = '';
+        paramKeys.forEach(k => {
+            sliders.innerHTML += `<div class="slider-box"><label>${paramNames[k]} <span class="slider-val" id="s-val-${k}">${params[k]}</span></label>
+                <input type="range" id="s-in-${k}" min="0" max="${params[k] * 3 + 1}" step="0.01" value="${params[k]}" oninput="updateParam('${k}', this.value)"></div>`;
+        });
+        showScreen('simulation-screen');
+        initChart();
+        simInterval = setInterval(step, speed);
+    }
+
+    function importSnapshot(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = JSON.parse(e.target.result);
+            T = data.T; E = data.E; C = data.C; time = data.time; params = data.params;
+            chart.data.labels = []; chart.data.datasets.forEach(d => d.data = []);
+            paramKeys.forEach(k => { const sl = document.getElementById(`s-in-${k}`); if(sl) { sl.value = params[k]; document.getElementById(`s-val-${k}`).innerText = params[k]; } });
+            event.target.value = ""; 
+        };
+        reader.readAsText(file);
+    }
+
+    function updateParam(k, v) { params[k] = parseFloat(v); document.getElementById(`s-val-${k}`).innerText = v; }
+    function togglePause() { isPaused = !isPaused; document.getElementById('pause-btn').innerText = isPaused ? "▶ Resume" : "⏸ Pause"; }
+
+    function initChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const boldFont = { size: 14, weight: 'bold', family: 'system-ui' };
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [
+                { label: 'Tourists (T)', data: [], borderColor: '#5dade2', pointRadius: 0, fill: false, borderWidth: 3 },
+                { label: 'Environment (E)', data: [], borderColor: '#58d68d', pointRadius: 0, fill: false, borderWidth: 3 },
+                { label: 'Capital (C)', data: [], borderColor: '#f5b041', pointRadius: 0, fill: false, borderWidth: 3 }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ffffff', font: boldFont } } },
+                scales: { x: { ticks: { color: '#ffffff', font: boldFont }, grid: { color: 'rgba(255,255,255,0.1)' } }, 
+                          y: { min: 0, ticks: { color: '#ffffff', font: boldFont }, grid: { color: 'rgba(255,255,255,0.1)' } } } }
+        });
+    }
+
+    function step() {
+        if (isPaused) return;
+        let aE = params.mu_e * (E / (E + params.phi_e)), aC = params.mu_c * (C / (C + params.phi_c));
+        let dT = T * (aE + aC - params.alpha * T - 0.15), dE = params.r * E * (1 - E / params.k) - params.beta * T - params.gamma * C, dC = 0.15 * T - 0.1 * C;
+        T = Math.max(0, T + dT * dt); E = Math.max(0, E + dE * dt); C = Math.max(0, C + dC * dt);
+        time += dt; updateUI(dT, dE, dC);
+    }
+
+    function updateUI(dT, dE, dC) {
+        document.getElementById('val-t').innerText = T.toFixed(2);
+        document.getElementById('val-e').innerText = E.toFixed(2);
+        document.getElementById('val-c').innerText = C.toFixed(2);
+        chart.data.labels.push(time.toFixed(1));
+        chart.data.datasets[0].data.push(T); chart.data.datasets[1].data.push(E); chart.data.datasets[2].data.push(C);
+        if(chart.data.labels.length > 150) { chart.data.labels.shift(); chart.data.datasets.forEach(d => d.data.shift()); }
+        chart.update();
+        const status = document.getElementById('system-status');
+        if (E < 0.1) { status.innerText = "CRITICAL: ECO COLLAPSE"; status.style.background = "rgba(231,76,60,0.8)"; }
+        else if (dT > 0.1) { status.innerText = "GROWTH PHASE"; status.style.background = "rgba(46,204,113,0.8)"; }
+        else { status.innerText = "STABLE SYSTEM"; status.style.background = "rgba(52,152,219,0.8)"; }
+        if(document.getElementById('enable-debug').checked) document.getElementById('debug-log').innerText = `T: ${T.toFixed(3)} | E: ${E.toFixed(3)} | C: ${C.toFixed(3)}\ndT/dt: ${dT.toFixed(4)}`;
+    }
+
+    function exportConfig() {
+        const config = { init: { t: document.getElementById('init-t').value, e: document.getElementById('init-e').value, c: document.getElementById('init-c').value }, params: params };
+        const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config));
+        const link = document.createElement('a'); link.setAttribute("href", data); link.setAttribute("download", "config.json"); link.click();
+    }
+
+    function exportSnapshot() {
+        const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({T, E, C, time, params}));
+        const link = document.createElement('a'); link.setAttribute("href", data); link.setAttribute("download", "snapshot.json"); link.click();
+    }
+</script>
+</body>
+</html>
