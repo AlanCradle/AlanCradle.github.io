@@ -56,12 +56,10 @@
         .screen.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- Zoom/Scale Logic for Simulation Screen --- */
         #simulation-screen.active {
             display: block;
             transform: scale(0.6);
             transform-origin: top center;
-            /* Compensate for scale height reduction to avoid huge empty footer space */
             margin-bottom: -15%; 
         }
 
@@ -74,9 +72,9 @@
         }
 
         .input-group { margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .input-group label { font-size: 0.9rem; flex-grow: 1; font-weight: bold; }
+        .input-group label { font-size: 0.85rem; flex-grow: 1; font-weight: bold; }
         .input-group input { 
-            width: 70px; padding: 8px; 
+            width: 80px; padding: 8px; 
             background: rgba(0, 0, 0, 0.3); 
             color: #fff; border: 1px solid var(--glass-border); 
             border-radius: 10px; outline: none;
@@ -131,21 +129,17 @@
 <div class="container">
     <div id="home-screen" class="screen active">
         <div class="home-content">
-            <h1 style="font-size: 2.5rem; margin-bottom: 40px; border: none; font-weight: 800;">Environmental and Social economic Consequences of Tourism Development - Simulator</h1>
+            <h1 style="font-size: 2.5rem; margin-bottom: 40px; border: none; font-weight: 800;">Tourism Dynamics Simulator</h1>
             <button class="btn-start" onclick="showScreen('setup-screen')">START SIMULATION</button>
-            
             <div class="panel" style="margin-top: 50px;">
                 <div id="info-display" class="info-window"></div>
                 <textarea id="info-editor"></textarea>
-                <!--Editing functions-->
                 <div class="btn-group" style="justify-content: center; margin-top: 15px;">
                     <button class="btn-edit" id="toggle-edit" onclick="toggleInfoEdit()">Edit</button>
-                    <button class="btn-edit" id="save-info" onclick="saveInfoContent()" style="display:none; background: var(--env-color);">Save Changes</button>
+                    <button class="btn-edit" id="save-info" onclick="saveInfoContent()" style="display:none; background: var(--env-color);">Save</button>
                     <button class="btn-edit" onclick="document.getElementById('info-upload').click()">Import</button>
                     <input type="file" id="info-upload" accept=".txt" onchange="importInfoFile(event)">
                 </div>
-                
-
             </div>
         </div>
     </div>
@@ -153,37 +147,35 @@
     <div id="setup-screen" class="screen panel">
         <h1>Model Initialization</h1>
         <div class="btn-group">
-            <button onclick="document.getElementById('config-upload').click()">📂 Import Config</button>
+            <button onclick="document.getElementById('config-upload').click()">📂 Import JSON Config</button>
             <input type="file" id="config-upload" accept=".json" onchange="importConfig(event)">
-            <button onclick="exportConfig()">💾 Save Config</button>
+            <button onclick="exportConfig()">💾 Export JSON Config</button>
         </div>
 
         <div class="layout-grid setup-grid">
             <div>
-                <h2>Initial States</h2>
+                <h2>States & Flow</h2>
                 <div class="input-group"><label>Tourists (T₀)</label><input type="number" id="init-t" step="0.01" value="0.1"></div>
-                <div class="input-group"><label>Environment (E₀)</label><input type="number" id="init-e" step="0.01" value="1.0"></div>
+                <div class="input-group"><label>Eco Quality (E₀)</label><input type="number" id="init-e" step="0.01" value="1.0"></div>
                 <div class="input-group"><label>Capital (C₀)</label><input type="number" id="init-c" step="0.01" value="0.1"></div>
-                <h2>Time Flow</h2>
-                <div class="input-group"><label>Speed (ms/step)</label><input type="number" id="sim-speed" value="50" min="10" max="500"></div>
+                <div class="input-group"><label>Exit Rate (λ)</label><input type="number" id="p-lambda" step="0.01" value="0.15"></div>
+                <div class="input-group"><label>Step Speed (ms)</label><input type="number" id="sim-speed" value="50"></div>
             </div>
             <div>
                 <h2>Attractivity</h2>
                 <div class="input-group"><label>Env Max Attr (μ_E)</label><input type="number" id="p-mu_e" step="0.01" value="0.5"></div>
-                <div class="input-group"><label>Env Saturation (φ_E)</label><input type="number" id="p-phi_e" step="0.01" value="0.5"></div>
+                <div class="input-group"><label>Env Satur. (φ_E)</label><input type="number" id="p-phi_e" step="0.01" value="0.5"></div>
                 <div class="input-group"><label>Cap Max Attr (μ_C)</label><input type="number" id="p-mu_c" step="0.01" value="0.2"></div>
-                <div class="input-group"><label>Cap Saturation (φ_C)</label><input type="number" id="p-phi_c" step="0.01" value="0.5"></div>
+                <div class="input-group"><label>Cap Satur. (φ_C)</label><input type="number" id="p-phi_c" step="0.01" value="0.5"></div>
                 <div class="input-group"><label>Congestion (α)</label><input type="number" id="p-alpha" step="0.01" value="0.05"></div>
             </div>
             <div>
-                <h2>Environment</h2>
-                <div class="input-group"><label>Recovery Rate (r)</label><input type="number" id="p-r" step="0.01" value="0.4"></div>
+                <h2>Environment & Econ</h2>
+                <div class="input-group"><label>Recovery (r)</label><input type="number" id="p-r" step="0.01" value="0.4"></div>
                 <div class="input-group"><label>Capacity (K)</label><input type="number" id="p-k" step="0.01" value="1.0"></div>
                 <div class="input-group"><label>Dmg/Tourist (β)</label><input type="number" id="p-beta" step="0.01" value="0.2"></div>
-                <div class="input-group"><label>Dmg/Capital (γ)</label><input type="number" id="p-gamma" step="0.01" value="0.1"></div>
-                <div class="input-group" style="justify-content: flex-start; gap:10px; margin-top:20px;">
-                    <input type="checkbox" id="enable-debug" style="width:20px; height:20px;"><label>Enable Debugger</label>
-                </div>
+                <div class="input-group"><label>Reinvest (ε)</label><input type="number" id="p-epsilon" step="0.01" value="0.15"></div>
+                <div class="input-group"><label>Depreciation (δ)</label><input type="number" id="p-delta" step="0.01" value="0.1"></div>
             </div>
         </div>
         <button class="btn-success" onclick="startSim()" style="margin-top: 30px; width: 100%;">Launch 🚀</button>
@@ -212,7 +204,6 @@
                 </div>
                 <div id="system-status">Initializing...</div>
                 <div class="panel chart-container"><canvas id="mainChart"></canvas></div>
-                <div id="debug-panel" class="panel" style="display:none;"><h3>Debugger</h3><div class="debug-window" id="debug-log"></div></div>
             </div>
         </div>
     </div>
@@ -220,7 +211,12 @@
 
 <script>
     let T, E, C, params = {}, time = 0, dt = 0.1, simInterval, chart, isPaused = false;
-    const paramNames = { 'mu_e': 'Env Max Attr (μ_E)', 'phi_e': 'Env Satur. (φ_E)', 'mu_c': 'Cap Max Attr (μ_C)', 'phi_c': 'Cap Satur. (φ_C)', 'alpha': 'Congestion (α)', 'lambda': 'Exit Rate (λ)', 'r': 'Recovery (r)', 'k': 'Capacity (K)', 'beta': 'Dmg/Tourist (β)', 'gamma': 'Dmg/Capital (γ)', 'epsilon': 'Reinvest (ε)', 'delta': 'Depreciation (δ)' };
+    const paramNames = { 
+        'mu_e': 'Env Max Attr (μ_E)', 'phi_e': 'Env Satur. (φ_E)', 'mu_c': 'Cap Max Attr (μ_C)', 
+        'phi_c': 'Cap Satur. (φ_C)', 'alpha': 'Congestion (α)', 'lambda': 'Exit Rate (λ)', 
+        'r': 'Recovery (r)', 'k': 'Capacity (K)', 'beta': 'Dmg/Tourist (β)', 
+        'epsilon': 'Reinvest (ε)', 'delta': 'Depreciation (δ)' 
+    };
     const paramKeys = Object.keys(paramNames);
 
     window.onload = () => {
@@ -228,31 +224,83 @@
         if (savedInfo) document.getElementById('info-display').innerHTML = savedInfo;
     };
 
+    // --- REPAIRED CONFIG FUNCTIONS ---
+
+    function exportConfig() {
+        const config = {
+            init: {
+                t: document.getElementById('init-t').value,
+                e: document.getElementById('init-e').value,
+                c: document.getElementById('init-c').value,
+                speed: document.getElementById('sim-speed').value
+            },
+            params: {}
+        };
+        // Pull every param from the input fields
+        paramKeys.forEach(k => {
+            const el = document.getElementById(`p-${k}`);
+            if (el) config.params[k] = el.value;
+        });
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "tourism_config.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function importConfig(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const config = JSON.parse(e.target.result);
+                // Restore Init States
+                if (config.init) {
+                    document.getElementById('init-t').value = config.init.t;
+                    document.getElementById('init-e').value = config.init.e;
+                    document.getElementById('init-c').value = config.init.c;
+                    document.getElementById('sim-speed').value = config.init.speed || 50;
+                }
+                // Restore Params
+                if (config.params) {
+                    paramKeys.forEach(k => {
+                        if (config.params[k] !== undefined) {
+                            const el = document.getElementById(`p-${k}`);
+                            if (el) el.value = config.params[k];
+                        }
+                    });
+                }
+                alert("Configuration Loaded Successfully!");
+            } catch (err) {
+                alert("Error: Invalid JSON file.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // --- REST OF THE LOGIC ---
+
     function toggleInfoEdit() {
-        const display = document.getElementById('info-display');
-        const editor = document.getElementById('info-editor');
-        const saveBtn = document.getElementById('save-info');
-        const toggleBtn = document.getElementById('toggle-edit');
+        const display = document.getElementById('info-display'), editor = document.getElementById('info-editor');
+        const saveBtn = document.getElementById('save-info'), toggleBtn = document.getElementById('toggle-edit');
         if (editor.style.display === 'none' || editor.style.display === '') {
             editor.value = display.innerHTML.replace(/<br>/g, '\n');
-            display.style.display = 'none';
-            editor.style.display = 'block';
-            saveBtn.style.display = 'inline-block';
-            toggleBtn.innerText = 'Cancel';
+            display.style.display = 'none'; editor.style.display = 'block';
+            saveBtn.style.display = 'inline-block'; toggleBtn.innerText = 'Cancel';
         } else {
-            display.style.display = 'block';
-            editor.style.display = 'none';
-            saveBtn.style.display = 'none';
-            toggleBtn.innerText = 'Edit Info Content';
+            display.style.display = 'block'; editor.style.display = 'none';
+            saveBtn.style.display = 'none'; toggleBtn.innerText = 'Edit Info';
         }
     }
 
     function saveInfoContent() {
-        const display = document.getElementById('info-display');
-        const editor = document.getElementById('info-editor');
+        const display = document.getElementById('info-display'), editor = document.getElementById('info-editor');
         const content = editor.value.replace(/\n/g, '<br>');
-        display.innerHTML = content;
-        localStorage.setItem('tourismSimInfo', content);
+        display.innerHTML = content; localStorage.setItem('tourismSimInfo', content);
         toggleInfoEdit();
     }
 
@@ -266,7 +314,6 @@
             localStorage.setItem('tourismSimInfo', content);
         };
         reader.readAsText(file);
-        event.target.value = "";
     }
 
     function showScreen(id) {
@@ -279,8 +326,11 @@
         E = parseFloat(document.getElementById('init-e').value);
         C = parseFloat(document.getElementById('init-c').value);
         let speed = parseInt(document.getElementById('sim-speed').value);
-        paramKeys.forEach(k => { const el = document.getElementById(`p-${k}`); params[k] = el ? parseFloat(el.value) : 0.15; });
-        if (document.getElementById('enable-debug').checked) document.getElementById('debug-panel').style.display = 'block';
+        paramKeys.forEach(k => { 
+            const el = document.getElementById(`p-${k}`); 
+            params[k] = el ? parseFloat(el.value) : 0.15; 
+        });
+        
         const sliders = document.getElementById('runtime-sliders');
         sliders.innerHTML = '';
         paramKeys.forEach(k => {
@@ -290,20 +340,6 @@
         showScreen('simulation-screen');
         initChart();
         simInterval = setInterval(step, speed);
-    }
-
-    function importSnapshot(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = JSON.parse(e.target.result);
-            T = data.T; E = data.E; C = data.C; time = data.time; params = data.params;
-            chart.data.labels = []; chart.data.datasets.forEach(d => d.data = []);
-            paramKeys.forEach(k => { const sl = document.getElementById(`s-in-${k}`); if(sl) { sl.value = params[k]; document.getElementById(`s-val-${k}`).innerText = params[k]; } });
-            event.target.value = ""; 
-        };
-        reader.readAsText(file);
     }
 
     function updateParam(k, v) { params[k] = parseFloat(v); document.getElementById(`s-val-${k}`).innerText = v; }
@@ -328,7 +364,10 @@
     function step() {
         if (isPaused) return;
         let aE = params.mu_e * (E / (E + params.phi_e)), aC = params.mu_c * (C / (C + params.phi_c));
-        let dT = T * (aE + aC - params.alpha * T - 0.15), dE = params.r * E * (1 - E / params.k) - params.beta * T - params.gamma * C, dC = 0.15 * T - 0.1 * C;
+        let dT = T * (aE + aC - params.alpha * T - params.lambda);
+        let dE = params.r * E * (1 - E / params.k) - params.beta * T - 0.1 * C; 
+        let dC = params.epsilon * T - params.delta * C;
+        
         T = Math.max(0, T + dT * dt); E = Math.max(0, E + dE * dt); C = Math.max(0, C + dC * dt);
         time += dt; updateUI(dT, dE, dC);
     }
@@ -345,18 +384,24 @@
         if (E < 0.1) { status.innerText = "CRITICAL: ECO COLLAPSE"; status.style.background = "rgba(231,76,60,0.8)"; }
         else if (dT > 0.1) { status.innerText = "GROWTH PHASE"; status.style.background = "rgba(46,204,113,0.8)"; }
         else { status.innerText = "STABLE SYSTEM"; status.style.background = "rgba(52,152,219,0.8)"; }
-        if(document.getElementById('enable-debug').checked) document.getElementById('debug-log').innerText = `T: ${T.toFixed(3)} | E: ${E.toFixed(3)} | C: ${C.toFixed(3)}\ndT/dt: ${dT.toFixed(4)}`;
-    }
-
-    function exportConfig() {
-        const config = { init: { t: document.getElementById('init-t').value, e: document.getElementById('init-e').value, c: document.getElementById('init-c').value }, params: params };
-        const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config));
-        const link = document.createElement('a'); link.setAttribute("href", data); link.setAttribute("download", "config.json"); link.click();
     }
 
     function exportSnapshot() {
         const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({T, E, C, time, params}));
         const link = document.createElement('a'); link.setAttribute("href", data); link.setAttribute("download", "snapshot.json"); link.click();
+    }
+
+    function importSnapshot(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = JSON.parse(e.target.result);
+            T = data.T; E = data.E; C = data.C; time = data.time; params = data.params;
+            chart.data.labels = []; chart.data.datasets.forEach(d => d.data = []);
+            paramKeys.forEach(k => { const sl = document.getElementById(`s-in-${k}`); if(sl) { sl.value = params[k]; document.getElementById(`s-val-${k}`).innerText = params[k]; } });
+        };
+        reader.readAsText(file);
     }
 </script>
 </body>
